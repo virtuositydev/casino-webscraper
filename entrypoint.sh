@@ -11,13 +11,6 @@ cat > /etc/cron.d/scraper << 'EOF'
 # Scraper runs at 8 AM
 0 8 * * * cd /app && python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
 
-# Processor runs at 9 AM (processes latest folder)
-0 9 * * * cd /app && python3 /app/run_processor.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
-
-# Cleanup at 2 AM
-0 2 * * * /app/cleanup.sh >> /app/logs/cleanup_$(date +\%Y\%m\%d).log 2>&1
-EOF
-
 # Set permissions
 chmod 0644 /etc/cron.d/scraper
 
