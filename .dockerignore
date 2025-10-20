@@ -1,0 +1,19 @@
+# .dockerignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+output/
+logs/
+archive/
+promo_*/
+*.json
+*.xlsx
+.git/
+.gitignore
+README.md
+*.log
+.env

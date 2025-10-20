@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  casino-scraper:
+    build: .
+    container_name: casino-scraper
+    restart: unless-stopped
+    
+    environment:
+      - TZ=Asia/Manila
+      - MAX_PAGES_PER_CASINO=5
+      - PYTHONUNBUFFERED=1
+    
+    env_file:
+      - .env.ren3
+    
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./archive:/app/archive
+      - ./processed:/app/processed
+      - ./casino_scraper.py:/app/casino_scraper.py
+      - ./ren3_processor.py:/app/ren3_processor.py
+      - ./run_processor.py:/app/run_processor.py
+      - ./.env.ren3:/app/.env.ren3
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: nginx.dockerfile
+    container_name: scraper-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./output:/usr/share/nginx/html/output:ro
+      - ./logs:/usr/share/nginx/html/logs:ro
+      - ./processed:/usr/share/nginx/html/processed:ro
+    depends_on:
+      - casino-scraper

@@ -1,0 +1,93 @@
+Prerequisites
+Ensure the following are installed on your server:
+
+Docker (20.10+)
+Docker Compose (2.0+)
+Git
+
+Quick Deployment
+1. Clone the Repository
+
+git clone https://github.com/Ikhwan20/casino-webscraper.git
+cd casino-webscraper
+
+2. Configure Environment (Optional)
+Edit docker-compose.yml if you want to change settings
+
+nano docker-compose.yml
+
+# Key settings you might want to adjust:
+# - TZ=Asia/Manila (timezone)
+# - MAX_PAGES_PER_CASINO=None (scraping limit)
+# - Cron schedule: 0 8 * * * (daily at 8 AM)
+
+3. Build and Start
+
+docker-compose build
+
+# Start the containers
+docker-compose up -d
+
+# Verify containers are running
+docker-compose ps
+
+4. Verify Installation
+
+# Check logs
+docker-compose logs -f casino-scraper
+
+# Run scraper manually (first test)
+docker-compose exec casino-scraper python casino_scraper.py
+
+# Check output
+ls -lah output/
+
+# Verify cron job is set up
+docker-compose exec casino-scraper crontab -l
+
+Daily Operation
+The scraper runs automatically every day at 8:00 AM via cron.
+
+Manual Trigger
+docker-compose exec casino-scraper python casino_scraper.py
+
+View Logs
+docker-compose logs -f casino-scraper
+
+# View specific log file
+ls -lah logs/
+tail -f logs/scraper_YYYYMMDD_HHMMSS.log
+
+Access Data
+# View scraped data
+ls -lah output/
+
+# List all promo folders
+ls -lah output/promo_*/
+
+# View jackpots
+cat output/promo_TIMESTAMP/_jackpots.json
+
+# View index
+cat output/promo_TIMESTAMP/_index.json
+
+Maintenance
+Stop/Start/Restart
+# Stop
+docker-compose stop
+
+# Start
+docker-compose start
+
+# Restart
+docker-compose restart
+
+# Stop and remove
+docker-compose down
+
+Update Script
+# Pull latest changes
+git pull origin main
+
+# Restart containers
+docker-compose restart casino-scraper
