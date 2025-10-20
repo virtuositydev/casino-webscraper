@@ -20,8 +20,6 @@ services:
       - ./archive:/app/archive
       - ./processed:/app/processed
       - ./casino_scraper.py:/app/casino_scraper.py
-      - ./ren3_processor.py:/app/ren3_processor.py
-      - ./run_processor.py:/app/run_processor.py
       - ./.env.ren3:/app/.env.ren3
     
     logging:
@@ -41,6 +39,6 @@ services:
     volumes:
       - ./output:/usr/share/nginx/html/output:ro
       - ./logs:/usr/share/nginx/html/logs:ro
-      - ./processed:/usr/share/nginx/html/processed:ro
     depends_on:
+
       - casino-scraper
