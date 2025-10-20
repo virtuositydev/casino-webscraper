@@ -8,4 +8,5 @@ RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Ensure directories exist
-RUN mkdir -p /usr/share/nginx/html/output /usr/share/nginx/html/logs /usr/share/nginx/html/processed
+
+RUN mkdir -p /usr/share/nginx/html/output /usr/share/nginx/html/logs 
