@@ -2045,3 +2045,4 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
 if __name__ == "__main__":
 
     results = main()
+
