@@ -1496,7 +1496,7 @@ def scrape_solaire_jackpots():
                         amountElements.forEach(elem => {
                             const text = elem.textContent || '';
                             // Look for Philippine Peso amounts
-                            const amountMatches = text.match(/[P₱]\s*[\d,]+/g);
+                            const amountMatch = text.match(/[P₱]\s*[\d,]+/g);
                             
                             if (amountMatch) {
                                 amountMatch.forEach(amount => {
@@ -2045,5 +2045,6 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
 if __name__ == "__main__":
 
     results = main()
+
 
 
