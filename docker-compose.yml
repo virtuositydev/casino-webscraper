@@ -8,11 +8,8 @@ services:
     
     environment:
       - TZ=Asia/Manila
-      - MAX_PAGES_PER_CASINO=5
+      - MAX_PAGES_PER_CASINO=None
       - PYTHONUNBUFFERED=1
-    
-    env_file:
-      - .env.ren3
     
     volumes:
       - ./output:/app/output
@@ -42,3 +39,4 @@ services:
     depends_on:
 
       - casino-scraper
+
