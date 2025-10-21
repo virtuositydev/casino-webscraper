@@ -8,9 +8,6 @@ RUN apt-get update && apt-get install -y \
     cron \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
-
 # Add pandas and openpyxl for CSV processing
 RUN pip install --no-cache-dir requests beautifulsoup4 playwright pandas openpyxl
 
@@ -36,3 +33,4 @@ HEALTHCHECK --interval=1h --timeout=10s --start-period=5s --retries=3 \
     CMD test -d /app/output || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
+
