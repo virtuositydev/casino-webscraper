@@ -15,9 +15,7 @@ services:
       - ./output:/app/output
       - ./logs:/app/logs
       - ./archive:/app/archive
-      - ./processed:/app/processed
       - ./casino_scraper.py:/app/casino_scraper.py
-      - ./.env.ren3:/app/.env.ren3
     
     logging:
       driver: "json-file"
@@ -39,4 +37,5 @@ services:
     depends_on:
 
       - casino-scraper
+
 

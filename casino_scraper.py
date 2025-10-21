@@ -1386,7 +1386,7 @@ def scrape_city_of_dreams_jackpots():
                                 const text = row.innerText || row.textContent || '';
                                 
                                 // Look for amounts
-                                const amountMatches = text.match(/[P₱]\s*[\d,]+/g);
+                                r"const amountMatches = text.match(/[P₱]\s*[\d,]+/g);"
                                 
                                 if (amountMatches && amountMatches.length >= 1) {
                                     // Try to extract structured data
@@ -1496,7 +1496,7 @@ def scrape_solaire_jackpots():
                         amountElements.forEach(elem => {
                             const text = elem.textContent || '';
                             // Look for Philippine Peso amounts
-                            const amountMatch = text.match(/₱\s*[\d,]+(?:\.\d+)?/g);
+                            r"const amountMatches = text.match(/[P₱]\s*[\d,]+/g);"
                             
                             if (amountMatch) {
                                 amountMatch.forEach(amount => {
@@ -2043,4 +2043,5 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
 
 # THIS IS THE MOST IMPORTANT PART - IT ACTUALLY RUNS THE SCRIPT!
 if __name__ == "__main__":
+
     results = main()
