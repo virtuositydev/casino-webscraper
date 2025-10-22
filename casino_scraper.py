@@ -1375,7 +1375,7 @@ def scrape_city_of_dreams_jackpots():
             if len(jackpots) == 0:
                 logger.info("  Trying JavaScript extraction...")
                 try:
-                    js_jackpots = page.evaluate("""
+                    js_jackpots = page.evaluate(r"""
                         () => {
                             const results = [];
                             
@@ -1386,7 +1386,7 @@ def scrape_city_of_dreams_jackpots():
                                 const text = row.innerText || row.textContent || '';
                                 
                                 // Look for amounts
-                                r"const amountMatches = text.match(/[P₱]\s*[\d,]+/g);"
+                                const amountMatches = text.match(/[P₱]\s*[\d,]+/g);
                                 
                                 if (amountMatches && amountMatches.length >= 1) {
                                     // Try to extract structured data
@@ -1482,7 +1482,7 @@ def scrape_solaire_jackpots():
             
             # Try to extract jackpot data using JavaScript
             try:
-                jackpot_data = page.evaluate("""
+                jackpot_data = page.evaluate(r"""
                     () => {
                         const jackpots = [];
                         
@@ -1496,7 +1496,7 @@ def scrape_solaire_jackpots():
                         amountElements.forEach(elem => {
                             const text = elem.textContent || '';
                             // Look for Philippine Peso amounts
-                            r"const amountMatches = text.match(/[P₱]\s*[\d,]+/g);"
+                            const amountMatch = text.match(/[P₱]\s*[\d,]+/g);
                             
                             if (amountMatch) {
                                 amountMatch.forEach(amount => {
@@ -2045,4 +2045,6 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
 if __name__ == "__main__":
 
     results = main()
+
+
 
