@@ -2,11 +2,19 @@
 
 set -e
 
-# Create cron job with separate schedules
-echo "Setting up cron jobs..."
+# Create cron job with FULL PYTHON PATH
+echo "Setting up cron job..."
 cat > /etc/cron.d/scraper << 'EOF'
-# Scraper runs at 8 AM
-0 8 * * * cd /app && python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
+# Set PATH and PYTHONPATH for cron
+PATH=/usr/local/bin:/usr/bin:/bin
+PYTHONPATH=/usr/local/lib/python3.12/site-packages:/usr/lib/python3/dist-packages
+
+# Load environment variables
+SHELL=/bin/bash
+
+# Run scraper at 8 AM, then process with agent
+0 8 * * * root cd /app && /usr/bin/python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 
+
 EOF
 
 # Set permissions
