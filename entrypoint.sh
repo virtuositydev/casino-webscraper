@@ -18,7 +18,7 @@ PYTHONPATH=/usr/local/lib/python3.12/site-packages:/usr/lib/python3/dist-package
 SHELL=/bin/bash
 
 # Run scraper at 8 AM, then process with agent
-0 11 * * * root cd /app && /usr/bin/python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/web_parser.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
+0 8 * * * root cd /app && /usr/bin/python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/web_parser.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/jackpot_parser.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
 
 # Cleanup old data at 2 AM
 0 2 * * * root /app/cleanup.sh >> /app/logs/cleanup_$(date +\%Y\%m\%d).log 2>&1

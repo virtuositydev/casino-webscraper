@@ -8,7 +8,6 @@ import sys
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from urllib.parse import urljoin, urlparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import os
 import unicodedata
@@ -140,237 +139,6 @@ def create_session() -> requests.Session:
     return s
 
 session = create_session()
-
-# -------------------------------
-# Temporal Information Extraction (Unified)
-# -------------------------------
-def extract_all_temporal_info(text: str):
-    """Extract all temporal information from text"""
-    temporal_info = []
-    current_year = datetime.now().year
-    
-    # Operating Hours & Schedules
-    operating_hours_patterns = [
-        r"((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:\s*[-–]\s*(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun))?)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN|MN|noon|midnight))\s*(?:to|[-–])\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN|MN|noon|midnight))",
-        r"(?:OPERATING HOURS?|BUSINESS HOURS?|HOURS?|SCHEDULE|OPEN(?:ING)? HOURS?)[:\s]*([^.]{10,200})",
-        r"(Daily|Every\s+day|Everyday|Open\s+daily)[:\s]+(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN))\s*(?:to|[-–])\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN|MN))",
-        r"(?:from\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN))\s*(?:to|[-–])\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm|NN|MN))",
-        r"(\d{1,2}:\d{2})\s*(?:to|[-–])\s*(\d{1,2}:\d{2})",
-    ]
-    
-    for pattern in operating_hours_patterns:
-        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
-            try:
-                context = text[max(0, match.start()-100):match.end()+100].strip()
-                
-                if len(match.groups()) == 1:
-                    hours_text = match.group(1).strip()
-                    day_time_pattern = r"((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Daily|Weekdays|Weekends)[^:\n]*)[:\s]+([^\n]+)"
-                    for hours_match in re.finditer(day_time_pattern, hours_text, re.IGNORECASE):
-                        temporal_info.append({
-                            'type': 'operating_hours',
-                            'days': hours_match.group(1).strip(),
-                            'hours': hours_match.group(2).strip(),
-                            'raw_text': hours_match.group(0).strip(),
-                            'context': context
-                        })
-                elif len(match.groups()) == 3:
-                    if match.group(1).lower() in ['daily', 'every day', 'everyday', 'open daily']:
-                        temporal_info.append({
-                            'type': 'daily_schedule',
-                            'frequency': match.group(1),
-                            'start_time': match.group(2),
-                            'end_time': match.group(3),
-                            'raw_text': match.group(0),
-                            'context': context
-                        })
-                    elif any(day in match.group(1).lower() for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']):
-                        temporal_info.append({
-                            'type': 'operating_hours',
-                            'days': match.group(1),
-                            'start_time': match.group(2),
-                            'end_time': match.group(3),
-                            'raw_text': match.group(0),
-                            'context': context
-                        })
-                elif len(match.groups()) == 2:
-                    temporal_info.append({
-                        'type': 'time_range',
-                        'start_time': match.group(1),
-                        'end_time': match.group(2),
-                        'raw_text': match.group(0),
-                        'context': context
-                    })
-            except:
-                continue
-    
-    # Validity Periods
-    validity_patterns = [
-        r"(?:valid|available|offer valid|promotion valid|applicable)(?:\s+(?:from|until|through|till|on))?\s+([^.]{5,100})",
-        r"(?:every|each)\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|weekend|weekday)",
-        r"(weekdays?|weekends?)\s+only",
-        r"(?:promo period|promotion period|offer period)[:\s]*([^.]{10,150})",
-        r"(?:for a limited time|limited time offer|while supplies last)",
-    ]
-    
-    for pattern in validity_patterns:
-        for match in re.finditer(pattern, text, re.IGNORECASE):
-            try:
-                context = text[max(0, match.start()-50):match.end()+50].strip()
-                temporal_info.append({
-                    'type': 'validity_period',
-                    'description': match.group(0).strip(),
-                    'raw_text': match.group(0),
-                    'context': context
-                })
-            except:
-                continue
-    
-    # Date Patterns
-    month_mapping = {
-        'Jan': 'January', 'Feb': 'February', 'Mar': 'March',
-        'Apr': 'April', 'May': 'May', 'Jun': 'June',
-        'Jul': 'July', 'Aug': 'August', 'Sep': 'September', 'Sept': 'September',
-        'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
-    }
-    
-    # Date ranges
-    date_range_patterns = [
-        r"(?P<start_month>January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(?P<start_day>\d{1,2})\s*[-–]\s*(?P<end_month>January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)?\s*(?P<end_day>\d{1,2}),?\s*(?P<year>\d{4})?",
-        r"(?P<start_month>January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(?P<start_day>\d{1,2}),?\s*(?P<year>\d{4})\s*[-–]\s*(?P<end_month>January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(?P<end_day>\d{1,2}),?\s*(?P<end_year>\d{4})?",
-    ]
-    
-    for pattern in date_range_patterns:
-        for match in re.finditer(pattern, text, re.IGNORECASE):
-            try:
-                groups = match.groupdict()
-                start_month = month_mapping.get(groups.get('start_month'), groups.get('start_month'))
-                start_day = groups.get('start_day')
-                end_month = groups.get('end_month')
-                if end_month:
-                    end_month = month_mapping.get(end_month, end_month)
-                else:
-                    end_month = start_month
-                end_day = groups.get('end_day')
-                year = groups.get('year') or groups.get('end_year') or str(current_year)
-                
-                if start_month and start_day:
-                    start_date_str = f"{start_month} {start_day} {year}"
-                    end_date_str = f"{end_month} {end_day} {year if groups.get('end_year') is None else groups.get('end_year', year)}"
-                    
-                    start_date = datetime.strptime(start_date_str, "%B %d %Y")
-                    end_date = datetime.strptime(end_date_str, "%B %d %Y")
-                    
-                    temporal_info.append({
-                        'type': 'date_range',
-                        'start_date': start_date.isoformat(),
-                        'end_date': end_date.isoformat(),
-                        'raw_text': match.group(0),
-                        'context': text[max(0, match.start()-50):match.end()+50].strip()
-                    })
-            except:
-                continue
-    
-    # Until/End dates
-    until_patterns = [
-        r"(?:until|til|till)\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?",
-        r"(?:ends?|expires?)\s+(?:on\s+)?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?",
-        r"(?:through)\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?",
-    ]
-    
-    for pattern in until_patterns:
-        for match in re.finditer(pattern, text, re.IGNORECASE):
-            try:
-                month = month_mapping.get(match.group(1), match.group(1))
-                day = match.group(2)
-                year = match.group(3) if match.group(3) else str(current_year)
-                date_str = f"{month} {day} {year}"
-                date_obj = datetime.strptime(date_str, "%B %d %Y")
-                
-                temporal_info.append({
-                    'type': 'end_date',
-                    'end_date': date_obj.isoformat(),
-                    'raw_text': match.group(0),
-                    'context': text[max(0, match.start()-50):match.end()+50].strip()
-                })
-            except:
-                continue
-    
-    # Single dates
-    single_date_patterns = [
-        r"(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?",
-    ]
-    
-    for pattern in single_date_patterns:
-        for match in re.finditer(pattern, text):
-            try:
-                month = month_mapping.get(match.group(1), match.group(1))
-                day = match.group(2)
-                year = match.group(3) if match.group(3) else str(current_year)
-                date_str = f"{month} {day} {year}"
-                date_obj = datetime.strptime(date_str, "%B %d %Y")
-                
-                temporal_info.append({
-                    'type': 'single_date',
-                    'date': date_obj.isoformat(),
-                    'raw_text': match.group(0),
-                    'context': text[max(0, match.start()-50):match.end()+50].strip()
-                })
-            except:
-                continue
-    
-    # Remove duplicates
-    seen = set()
-    unique_temporal_info = []
-    for info in temporal_info:
-        key = (info['type'], info.get('raw_text', ''))
-        if key not in seen:
-            seen.add(key)
-            unique_temporal_info.append(info)
-    
-    return unique_temporal_info
-
-
-def summarize_temporal_info(temporal_info):
-    """Create summary of temporal information"""
-    summary = {
-        'has_specific_dates': False,
-        'has_operating_hours': False,
-        'has_validity_period': False,
-        'date_ranges': [],
-        'single_dates': [],
-        'operating_schedules': [],
-        'validity_descriptions': [],
-        'all_temporal_text': []
-    }
-    
-    for info in temporal_info:
-        summary['all_temporal_text'].append(info['raw_text'])
-        
-        if info['type'] == 'date_range':
-            summary['has_specific_dates'] = True
-            summary['date_ranges'].append({
-                'start': info['start_date'],
-                'end': info['end_date'],
-                'text': info['raw_text']
-            })
-        elif info['type'] in ['single_date', 'end_date']:
-            summary['has_specific_dates'] = True
-            summary['single_dates'].append({
-                'date': info.get('date') or info.get('end_date'),
-                'text': info['raw_text']
-            })
-        elif info['type'] in ['operating_hours', 'daily_schedule', 'time_range']:
-            summary['has_operating_hours'] = True
-            summary['operating_schedules'].append({
-                'type': info['type'],
-                'text': info['raw_text']
-            })
-        elif info['type'] == 'validity_period':
-            summary['has_validity_period'] = True
-            summary['validity_descriptions'].append(info['description'])
-    
-    return summary
 
 
 def get_category_from_url(url: str, casino_name: str) -> str:
@@ -565,9 +333,6 @@ def scrape_page_static(url: str, casino_name: str) -> Optional[Dict[str, Any]]:
         if not is_promotional_content(raw_content, url):
             return None
         
-        temporal_info = extract_all_temporal_info(raw_content)
-        temporal_summary = summarize_temporal_info(temporal_info)
-        
         item_id = hashlib.sha256(url.encode()).hexdigest()
         category = get_category_from_url(url, casino_name)
         
@@ -578,8 +343,6 @@ def scrape_page_static(url: str, casino_name: str) -> Optional[Dict[str, Any]]:
             "url": url,
             "category": category,
             "raw_content": raw_content[:5000],
-            "temporal_info": temporal_info,
-            "temporal_summary": temporal_summary,
             "scraped_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -640,7 +403,7 @@ def scrape_city_of_dreams():
             result = scrape_page_static(url, "City of Dreams Manila")
             if result:
                 results.append(result)
-                logger.info(f"  ✓ Scraped: {result['title']}")
+                logger.info(f"  Scraped: {result['title']}")
         
         return results
     
@@ -743,9 +506,6 @@ def scrape_city_of_dreams():
                     if not is_promotional_content(raw_text, url):
                         continue
                     
-                    temporal_info = extract_all_temporal_info(raw_text)
-                    temporal_summary = summarize_temporal_info(temporal_info)
-                    
                     item_id = hashlib.sha256(url.encode()).hexdigest()
                     category = get_category_from_url(url, "City of Dreams Manila")
                     
@@ -756,17 +516,15 @@ def scrape_city_of_dreams():
                         "url": url,
                         "category": category,
                         "raw_content": raw_text[:5000],
-                        "temporal_info": temporal_info,
-                        "temporal_summary": temporal_summary,
                         "scraped_at": datetime.now(timezone.utc).isoformat()
                     })
                     
-                    logger.info(f"    ✓ Scraped: {title}")
+                    logger.info(f"    Scraped: {title}")
                     
                 except PlaywrightTimeoutError:
-                    logger.error(f"    ✗ Timeout scraping {url}")
+                    logger.error(f"    Timeout scraping {url}")
                 except Exception as e:
-                    logger.error(f"    ✗ Error scraping {url}: {e}")
+                    logger.error(f"    Error scraping {url}: {e}")
                 
                 # Small delay between requests
                 time.sleep(0.5)
@@ -813,7 +571,7 @@ def scrape_city_of_dreams_static():
         result = scrape_page_static(url, "City of Dreams Manila")
         if result:
             results.append(result)
-            logger.info(f"  ✓ Scraped: {result['title']}")
+            logger.info(f"  Scraped: {result['title']}")
     
     return results
 
@@ -877,7 +635,7 @@ def scrape_newport_world():
         result = scrape_page_static(url, "Newport World Resorts")
         if result:
             results.append(result)
-            logger.info(f"    ✓ Scraped: {result['title']}")
+            logger.info(f"    Scraped: {result['title']}")
         time.sleep(0.3)  # Small delay between requests
     
     logger.info(f"  Total scraped from Newport: {len(results)}")
@@ -927,7 +685,7 @@ def scrape_okada():
         result = scrape_page_static(url, "Okada Manila")
         if result:
             results.append(result)
-            logger.info(f"    ✓ Scraped: {result['title']}")
+            logger.info(f"    Scraped: {result['title']}")
         time.sleep(0.3)  # Small delay
     
     logger.info(f"  Total scraped from Okada: {len(results)}")
@@ -1091,10 +849,6 @@ def scrape_solaire():
                         logger.info(f"    Skipped - Not promotional content")
                         continue
                     
-                    # Extract temporal information
-                    temporal_info = extract_all_temporal_info(raw_content)
-                    temporal_summary = summarize_temporal_info(temporal_info)
-                    
                     # Generate unique ID
                     item_id = hashlib.sha256(url.encode()).hexdigest()
                     category = get_category_from_url(url, "Solaire Resort")
@@ -1106,17 +860,15 @@ def scrape_solaire():
                         "url": url,
                         "category": category,
                         "raw_content": raw_content[:5000],
-                        "temporal_info": temporal_info,
-                        "temporal_summary": temporal_summary,
                         "scraped_at": datetime.now(timezone.utc).isoformat()
                     })
                     
-                    logger.info(f"    ✓ Scraped: {title}")
+                    logger.info(f"    Scraped: {title}")
                     
                 except PlaywrightTimeoutError:
-                    logger.error(f"    ✗ Timeout scraping {url}")
+                    logger.error(f"    Timeout scraping {url}")
                 except Exception as e:
-                    logger.error(f"    ✗ Error scraping {url}: {e}")
+                    logger.error(f"    Error scraping {url}: {e}")
                 
                 # Small delay between requests
                 time.sleep(0.5)
@@ -1198,7 +950,7 @@ def scrape_solaire_static():
         result = scrape_page_static(url, "Solaire Resort")
         if result:
             results.append(result)
-            logger.info(f"    ✓ Scraped: {result['title']}")
+            logger.info(f"    Scraped: {result['title']}")
         time.sleep(0.3)
     
     logger.info(f"  Total scraped from Solaire: {len(results)}")
@@ -1236,7 +988,7 @@ def scrape_city_of_dreams_jackpots():
                                 'url': response.url,
                                 'data': data
                             })
-                            logger.info(f"  📡 Captured API call: {response.url}")
+                            logger.info(f"  Captured API call: {response.url}")
                     except:
                         pass
             
@@ -1260,9 +1012,9 @@ def scrape_city_of_dreams_jackpots():
             # Strategy 1: Wait for table or specific elements
             try:
                 page.wait_for_selector('table, [class*="jackpot"], [class*="slot"]', timeout=10000)
-                logger.info("  ✓ Content elements found")
+                logger.info("  Content elements found")
             except:
-                logger.warning("  ⚠ No table elements found, continuing...")
+                logger.warning("  No table elements found, continuing...")
             
             # Give extra time for Angular to render
             page.wait_for_timeout(8000)
@@ -1329,7 +1081,7 @@ def scrape_city_of_dreams_jackpots():
                                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                                     "source_url": url
                                 })
-                                logger.debug(f"    ✓ Added: {game_name} - {amount}")
+                                logger.debug(f"    Added: {game_name} - {amount}")
             
             # Method 2: If no table, try text parsing
             if len(jackpots) == 0:
@@ -1433,7 +1185,7 @@ def scrape_city_of_dreams_jackpots():
             
             browser.close()
             
-            logger.info(f"  ✓ Found {len(jackpots)} jackpots")
+            logger.info(f"  Found {len(jackpots)} jackpots")
             
             # Show sample
             if jackpots:
@@ -1469,131 +1221,123 @@ def scrape_solaire_jackpots():
             page = context.new_page()
             
             logger.info(f"  Loading: {url}")
-            try:
-                page.goto(url, wait_until='domcontentloaded', timeout=60000)
-                # Wait for specific content instead of networkidle
-                page.wait_for_selector('body', timeout=10000)
-                page.wait_for_timeout(5000)
-            except Exception as e:
-                logger.warning(f"  Initial load issue: {e}, trying alternative approach")
-                # Fallback: try with even more lenient settings
-                page.goto(url, wait_until='commit', timeout=30000)
-                page.wait_for_timeout(10000)
+            page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            page.wait_for_selector('.banner-slot', timeout=10000)
+            page.wait_for_timeout(5000)
             
-            # Try to extract jackpot data using JavaScript
-            try:
-                jackpot_data = page.evaluate(r"""
-                    () => {
-                        const jackpots = [];
-                        
-                        // Look for elements with jackpot amounts
-                        // Solaire typically uses specific classes or data attributes
-                        const amountElements = document.querySelectorAll(
-                            '[class*="jackpot"], [class*="amount"], [class*="billboard"], ' +
-                            '[data-jackpot], [data-amount]'
-                        );
-                        
-                        amountElements.forEach(elem => {
-                            const text = elem.textContent || '';
-                            // Look for Philippine Peso amounts
-                            const amountMatch = text.match(/[P₱]\s*[\d,]+/g);
+            # Extract jackpot data from the page
+            jackpot_data = page.evaluate(r"""
+                () => {
+                    const jackpots = [];
+                    
+                    // Find all jackpot containers
+                    const containers = document.querySelectorAll('.banner-slot');
+                    
+                    containers.forEach(container => {
+                        try {
+                            // Extract game name from image src
+                            const img = container.querySelector('.jackpot-img');
+                            let gameName = 'Unknown Game';
                             
-                            if (amountMatch) {
-                                amountMatch.forEach(amount => {
-                                    // Try to find game name nearby
-                                    let gameName = '';
+                            if (img && img.src) {
+                                // Parse game name from filename
+                                const filename = img.src.split('/').pop().replace('.png', '').replace('.webp', '');
+                                // Convert underscores and hyphens to spaces, clean up
+                                gameName = filename
+                                    .replace(/_/g, ' ')
+                                    .replace(/-/g, ' ')
+                                    .replace(/\d+$/, '') // Remove trailing numbers
+                                    .replace(/logo/gi, '')
+                                    .replace(/curve/gi, '')
+                                    .trim();
+                                
+                                // Capitalize words
+                                gameName = gameName.split(' ')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                    .join(' ');
                                     
-                                    // Check parent, siblings, or nearby elements
-                                    const parent = elem.closest('[class*="card"], [class*="item"], [class*="jackpot"]');
-                                    if (parent) {
-                                        const titleElem = parent.querySelector('[class*="title"], [class*="name"], h1, h2, h3, h4');
-                                        if (titleElem) {
-                                            gameName = titleElem.textContent.trim();
+                                // Special case mappings
+                                const nameMapping = {
+                                    'Jinjibaoxi': 'Jin Ji Bao Xi',
+                                    'Dl': 'Dragon Link',
+                                    'Lightning Link': 'Lightning Link',
+                                    'Duo Fu Duo Cai Grand': 'Duo Fu Duo Cai',
+                                    'Jotd': 'Jewels of the Dragon',
+                                    'Jin Cai Hao Yun': 'Jin Cai Hao Yun',
+                                    'Coin Combo': 'Coin Combo',
+                                    'Mighty Cash': 'Mighty Cash',
+                                    'Lightning Gongs': 'Lightning Gongs',
+                                    'Dfdc Thumbnail': 'Duo Fu Duo Cai',
+                                    'Dragon Trio': 'Dragon Trio',
+                                    'Shfp': 'Super Happy Fortune',
+                                    'Bao Zhu Zhao Fu': 'Bao Zhu Zhao Fu',
+                                    'Lion Link': 'Lion Link',
+                                    'Fu Lai Cai Lai': 'Fu Lai Cai Lai',
+                                    'Fafafa': 'FaFaFa',
+                                    'Fortune Harmony': 'Fortune Harmony',
+                                    'Coin Trio': 'Coin Trio',
+                                    'Good Fortune': 'Good Fortune',
+                                    'Super Split': 'Super Split'
+                                };
+                                
+                                // Apply mapping if exists
+                                for (const [key, value] of Object.entries(nameMapping)) {
+                                    if (gameName.toLowerCase().includes(key.toLowerCase())) {
+                                        gameName = value;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Extract jackpot amount
+                            const numberContainer = container.querySelector('.banner-slot-number');
+                            let amount = '';
+                            
+                            if (numberContainer) {
+                                // Get all digit spans
+                                const digits = numberContainer.querySelectorAll('.slot-digit');
+                                let amountParts = [];
+                                
+                                digits.forEach(digit => {
+                                    if (digit.classList.contains('seperator')) {
+                                        amountParts.push(digit.textContent.trim());
+                                    } else {
+                                        // Get the first visible number
+                                        const spans = digit.querySelectorAll('span');
+                                        if (spans.length > 0) {
+                                            amountParts.push(spans[0].textContent.trim());
                                         }
                                     }
-                                    
-                                    // Don't include if it looks like a timestamp or other non-jackpot data
-                                    if (!amount.includes('2025') && !amount.includes('GMT')) {
-                                        jackpots.push({
-                                            game_name: gameName,
-                                            amount: amount.trim()
-                                        });
-                                    }
+                                });
+                                
+                                amount = '₱ ' + amountParts.join('');
+                            }
+                            
+                            if (amount && amount !== '₱ ') {
+                                jackpots.push({
+                                    game_name: gameName,
+                                    amount: amount
                                 });
                             }
-                        });
-                        
-                        return jackpots;
-                    }
-                """)
-                
-                # Process the extracted data
-                for jp in jackpot_data:
-                    amount = jp.get('amount', '')
-                    if amount and '₱' in amount:
-                        # Clean the amount
-                        amount_clean = amount.replace('₱', '').strip()
-                        # Remove excessive decimal places
-                        if '.' in amount_clean:
-                            parts = amount_clean.split('.')
-                            if len(parts[1]) > 2:
-                                amount_clean = f"{parts[0]}.{parts[1][:2]}"
-                                amount = f"₱ {amount_clean}"
-                        
-                        # Extract numeric value
-                        amount_numeric = re.sub(r'[^\d,.]', '', amount_clean)
-                        
-                        jackpots.append({
-                            "casino": "Solaire Resort",
-                            "game_name": jp.get('game_name', 'Unknown Game'),
-                            "current_amount": amount,
-                            "amount_numeric": amount_numeric,
-                            "jackpot_type": "Progressive",
-                            "currency": "PHP",
-                            "scraped_at": datetime.now(timezone.utc).isoformat(),
-                            "source_url": url
-                        })
-                
-                logger.info(f"  ✓ Found {len(jackpots)} jackpots via JavaScript")
-                
-            except Exception as e:
-                logger.error(f"  JavaScript extraction failed: {e}")
-            
-            # Fallback: Parse the text content more carefully
-            if len(jackpots) == 0:
-                logger.info("  Trying text-based extraction...")
-                page_text = page.inner_text('body')
-                
-                # Find all Philippine Peso amounts
-                amounts = re.findall(r'₱\s*[\d,]+(?:\.\d{1,2})?', page_text)
-                
-                # Filter out dates and obviously wrong amounts
-                valid_amounts = []
-                for amount in amounts:
-                    # Remove excessive decimals
-                    cleaned = re.sub(r'\.(\d{2})\d+', r'.\1', amount)
-                    # Convert to numeric for validation
-                    numeric = float(re.sub(r'[^\d.]', '', cleaned))
+                        } catch (e) {
+                            console.error('Error processing container:', e);
+                        }
+                    });
                     
-                    # Typical jackpots are between 10M and 100M PHP
-                    if 10_000_000 <= numeric <= 100_000_000:
-                        valid_amounts.append(cleaned)
-                
-                # Remove duplicates while preserving order
-                seen = set()
-                unique_amounts = []
-                for amt in valid_amounts:
-                    if amt not in seen:
-                        seen.add(amt)
-                        unique_amounts.append(amt)
-                
-                # Create jackpot entries
-                for i, amount in enumerate(unique_amounts, 1):
+                    return jackpots;
+                }
+            """)
+            
+            # Process the extracted data
+            for jp in jackpot_data:
+                amount = jp.get('amount', '')
+                if amount and '₱' in amount:
+                    # Extract numeric value for sorting/comparison
                     amount_numeric = re.sub(r'[^\d,.]', '', amount)
                     
                     jackpots.append({
                         "casino": "Solaire Resort",
-                        "game_name": f"Slot Game #{i}",  # Generic name since we can't extract it
+                        "game_name": jp.get('game_name', 'Unknown Game'),
                         "current_amount": amount,
                         "amount_numeric": amount_numeric,
                         "jackpot_type": "Progressive",
@@ -1601,10 +1345,9 @@ def scrape_solaire_jackpots():
                         "scraped_at": datetime.now(timezone.utc).isoformat(),
                         "source_url": url
                     })
-                
-                logger.info(f"  ✓ Found {len(jackpots)} jackpots via text parsing")
             
             browser.close()
+            logger.info(f"  Successfully scraped {len(jackpots)} jackpots")
             
     except Exception as e:
         logger.error(f"  Error scraping Solaire jackpots: {e}")
@@ -1621,7 +1364,7 @@ def save_jackpots(jackpots: List[Dict[str, Any]], folder_name: str):
         return
     
     try:
-        jackpot_file = os.path.join(folder_name, "_jackpots.json")
+        jackpot_file = os.path.join(folder_name, "jackpots.json")
         
         # Group by casino
         jackpots_by_casino = {}
@@ -1664,7 +1407,7 @@ def save_jackpots(jackpots: List[Dict[str, Any]], folder_name: str):
         with open(jackpot_file, 'w', encoding='utf-8') as f:
             json.dump(jackpot_summary, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"\n💰 Jackpots Summary:")
+        logger.info(f"\nJackpots Summary:")
         logger.info(f"  • Total jackpots found: {len(jackpots)}")
         
         for casino, stats in stats_by_casino.items():
@@ -1685,7 +1428,7 @@ def save_jackpots(jackpots: List[Dict[str, Any]], folder_name: str):
         for i, jp in enumerate(sorted_jackpots[:5], 1):
             logger.info(f"    {i}. {jp.get('casino')} - {jp.get('game_name')}: {jp.get('current_amount')}")
         
-        logger.info(f"\n  📄 Saved to: {jackpot_file}")
+        logger.info(f"\n  Saved to: {jackpot_file}")
         
     except Exception as e:
         logger.error(f"  Failed to save jackpots: {e}")
@@ -1756,9 +1499,9 @@ def main():
         total_with_validity = sum(1 for r in all_results if r.get('temporal_summary', {}).get('has_validity_period'))
         
         logger.info(f"\nTemporal Information:")
-        logger.info(f"  • Promotions with specific dates: {total_with_dates} ({total_with_dates*100//len(all_results)}%)")
-        logger.info(f"  • Promotions with operating hours: {total_with_hours} ({total_with_hours*100//len(all_results)}%)")
-        logger.info(f"  • Promotions with validity periods: {total_with_validity} ({total_with_validity*100//len(all_results)}%)")
+        logger.info(f"  Promotions with specific dates: {total_with_dates} ({total_with_dates*100//len(all_results)}%)")
+        logger.info(f"  Promotions with operating hours: {total_with_hours} ({total_with_hours*100//len(all_results)}%)")
+        logger.info(f"  Promotions with validity periods: {total_with_validity} ({total_with_validity*100//len(all_results)}%)")
     
     logger.info(f"\nBreakdown by Casino:")
     for casino, stats in casino_stats.items():
@@ -1768,10 +1511,10 @@ def main():
             logger.info(f"\n{casino}:")
             logger.info(f"  • Total promotions: {stats['total_promos']}")
             if stats['total_promos'] > 0:
-                logger.info(f"  • With dates: {stats['with_dates']} ({stats['with_dates']*100//stats['total_promos']}%)")
-                logger.info(f"  • With hours: {stats['with_hours']} ({stats['with_hours']*100//stats['total_promos']}%)")
-                logger.info(f"  • With validity: {stats['with_validity']} ({stats['with_validity']*100//stats['total_promos']}%)")
-                logger.info(f"  • Categories: {', '.join(f'{cat} ({count})' for cat, count in stats['categories'].items())}")
+                logger.info(f"  With dates: {stats['with_dates']} ({stats['with_dates']*100//stats['total_promos']}%)")
+                logger.info(f"  With hours: {stats['with_hours']} ({stats['with_hours']*100//stats['total_promos']}%)")
+                logger.info(f"  With validity: {stats['with_validity']} ({stats['with_validity']*100//stats['total_promos']}%)")
+                logger.info(f"  Categories: {', '.join(f'{cat} ({count})' for cat, count in stats['categories'].items())}")
     
     # Category breakdown
     all_categories = {}
@@ -1784,10 +1527,10 @@ def main():
     if all_categories:
         logger.info(f"\nCategory Distribution (All Casinos):")
         for cat, count in sorted(all_categories.items(), key=lambda x: x[1], reverse=True):
-            logger.info(f"  • {cat}: {count} promotions")
+            logger.info(f"  {cat}: {count} promotions")
     
     logger.info(f"\n{'=' * 60}")
-    logger.info("🎉 SCRAPING COMPLETE!")
+    logger.info("SCRAPING COMPLETE!")
     logger.info(f"{'=' * 60}")
 
      # ========== SCRAPE JACKPOTS ==========
@@ -1863,7 +1606,7 @@ def save_individual_promos(all_results: List[Dict[str, Any]], base_filename: str
     
     # Create folder name with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"/app/output/promo_{timestamp}" 
+    folder_name = f"app/output/promo_{timestamp}" 
     
     # Create the folder
     os.makedirs(folder_name, exist_ok=True)
@@ -1902,23 +1645,23 @@ def save_individual_promos(all_results: List[Dict[str, Any]], base_filename: str
             saved_count += 1
             
             if i <= 5:  # Show first 5 for verification
-                logger.info(f"  ✓ Saved: {filename}")
+                logger.info(f"  Saved: {filename}")
             elif i == 6:
                 logger.info(f"  ... saving remaining files ...")
             
         except Exception as e:
-            logger.error(f"  ✗ Failed to save promo {i}: {e}")
+            logger.error(f"  Failed to save promo {i}: {e}")
             failed_count += 1
     
     # Summary
-    logger.info(f"\n📁 Individual Files Summary:")
-    logger.info(f"  • Total files saved: {saved_count}")
-    logger.info(f"  • Failed: {failed_count}")
-    logger.info(f"  • Location: {os.path.abspath(folder_name)}")
+    logger.info(f"\nIndividual Files Summary:")
+    logger.info(f"  Total files saved: {saved_count}")
+    logger.info(f"  Failed: {failed_count}")
+    logger.info(f"  Location: {os.path.abspath(folder_name)}")
     
     logger.info(f"\n  Breakdown by Casino:")
     for casino, count in sorted(casino_counts.items(), key=lambda x: x[1], reverse=True):
-        logger.info(f"    • {casino}: {count} files")
+        logger.info(f"    {casino}: {count} files")
     
     # Create a summary index file
     try:
@@ -1943,7 +1686,7 @@ def save_individual_promos(all_results: List[Dict[str, Any]], base_filename: str
         with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(summary_data, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"\n  📋 Index file created: _index.json")
+        logger.info(f"\nIndex file created: _index.json")
         
     except Exception as e:
         logger.error(f"  Failed to create index file: {e}")
@@ -1988,7 +1731,7 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
         casino_folder = os.path.join(main_folder, casino_slug)
         os.makedirs(casino_folder, exist_ok=True)
         
-        logger.info(f"\n  📂 {casino} ({len(promos)} promos)")
+        logger.info(f"\n{casino} ({len(promos)} promos)")
         
         # Save each promo in casino folder
         for i, promo in enumerate(promos, 1):
@@ -2006,12 +1749,12 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
                 total_saved += 1
                 
                 if i <= 3:
-                    logger.info(f"    ✓ {filename}")
+                    logger.info(f"    {filename}")
                 elif i == 4 and len(promos) > 4:
                     logger.info(f"    ... {len(promos) - 3} more files ...")
                 
             except Exception as e:
-                logger.error(f"    ✗ Failed to save: {e}")
+                logger.error(f"    Failed to save: {e}")
     
     # Create main index
     try:
@@ -2031,9 +1774,9 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
         with open(index_file, 'w', encoding='utf-8') as f:
             json.dump(index_data, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"\n  ✅ Total files saved: {total_saved}")
-        logger.info(f"  📋 Index file: _index.json")
-        logger.info(f"  📍 Location: {os.path.abspath(main_folder)}")
+        logger.info(f"\nTotal files saved: {total_saved}")
+        logger.info(f"Index file: _index.json")
+        logger.info(f"Location: {os.path.abspath(main_folder)}")
         
     except Exception as e:
         logger.error(f"  Failed to create index: {e}")
@@ -2041,10 +1784,8 @@ def create_folder_structure(all_results: List[Dict[str, Any]]):
     return main_folder
 
 
-# THIS IS THE MOST IMPORTANT PART - IT ACTUALLY RUNS THE SCRIPT!
 if __name__ == "__main__":
 
     results = main()
-
 
 
