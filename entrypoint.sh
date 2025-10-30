@@ -19,7 +19,9 @@ PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 SHELL=/bin/bash
 
 # Run scraper at 12 AM, then process with agent
-0 0 * * * root cd /app && /usr/bin/python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/run_processor.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
+0 0 * * * root cd /app && /usr/bin/python3 casino_scraper.py >> /app/logs/scraper_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/web_parser.py >> /app/logs/processor_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 && sleep 10 && /usr/bin/python3 /app/jackpot_parser.py >> /app/logs/jackpot_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1
+
+0 8 * * * root cd /app && /usr/bin/python3 calendar_generator.py >> /app/logs/calendar_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 
 
 # Cleanup old data at 2 AM
 0 2 * * * root /app/cleanup.sh >> /app/logs/cleanup_$(date +\%Y\%m\%d).log 2>&1
