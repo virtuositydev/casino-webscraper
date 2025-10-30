@@ -8,11 +8,19 @@ from pathlib import Path
 import logging
 
 # --- Agent API Configuration ---
-api_url = 'https://api-solaire.ren3.ai'
-user_uuid = "96df854c-51bf-4126-a71a-e52872ccdedd"
-workspace_id = '3f9b8a90-7676-4458-a797-e83e45d1d7a5'
-agent_uuid = 'bcfb8374-f58e-42aa-8d90-592539d1a938'
-agent_folder = '130a4824-f8a2-41d8-9ca3-bb2e04b66ffe'
+# api_url = 'https://api-solaire.ren3.ai'
+# user_uuid = "96df854c-51bf-4126-a71a-e52872ccdedd"
+# workspace_id = '3f9b8a90-7676-4458-a797-e83e45d1d7a5'
+# agent_uuid = 'bcfb8374-f58e-42aa-8d90-592539d1a938'
+# agent_folder = '130a4824-f8a2-41d8-9ca3-bb2e04b66ffe'
+# poll_interval = 15
+# max_retries = 2  
+
+api_url = 'https://backend.ren3.ai'
+user_uuid = "89ce6ee3-9428-49ec-bbda-70ccd6ab0dd2"
+workspace_id = "67c9c8b1-060d-4831-9d2f-981bf9f4e4b3"
+agent_uuid = '72bf3fc2-bab0-427c-bcc5-7b46be52d7b9'
+agent_folder = '9df4348b-4779-4339-8837-a645ca8e4857'
 poll_interval = 15
 max_retries = 2  
 

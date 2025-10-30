@@ -8,15 +8,23 @@ from pathlib import Path
 import logging
 
 # --- Agent API Configuration ---
-api_url = 'https://api-solaire.ren3.ai'
-user_uuid = "96df854c-51bf-4126-a71a-e52872ccdedd"
-workspace_id = '3f9b8a90-7676-4458-a797-e83e45d1d7a5'
-agent_uuid = 'e51cbba2-598e-4608-81d1-6d88e72714ec'
-agent_folder = 'd10c23b8-c026-4867-83cb-087d37873374'
+# api_url = 'https://api-solaire.ren3.ai'
+# user_uuid = "96df854c-51bf-4126-a71a-e52872ccdedd"
+# workspace_id = '3f9b8a90-7676-4458-a797-e83e45d1d7a5'
+# agent_uuid = 'e51cbba2-598e-4608-81d1-6d88e72714ec'
+# agent_folder = 'd10c23b8-c026-4867-83cb-087d37873374'
+# poll_interval = 15
+# max_retries = 2  
+
+api_url = 'https://backend.ren3.ai'
+user_uuid = "89ce6ee3-9428-49ec-bbda-70ccd6ab0dd2"
+workspace_id = "67c9c8b1-060d-4831-9d2f-981bf9f4e4b3"
+agent_uuid = '8b85b525-ed7b-495d-b034-3249d648acd0'
+agent_folder = '70b9283f-9fd9-468b-a28e-fe7b3634b4fe'
 poll_interval = 15
 max_retries = 2  
 
-# Setup loggings
+# Setup 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)-8s %(message)s'

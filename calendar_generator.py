@@ -88,7 +88,7 @@ for date_str in sorted_dates:
     output_lines.append("")  # Empty line between dates
 
 # Write to file (save in the same promo folder)
-output_file = 'app/calendar' / 'calendar.txt'
+output_file = latest_folder / 'calendar.txt'
 with open(output_file, 'w', encoding='utf-8') as f:
     f.write('\n'.join(output_lines))
 
