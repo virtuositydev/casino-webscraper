@@ -24,7 +24,7 @@ SHELL=/bin/bash
 0 8 * * * root cd /app && /usr/bin/python3 calendar_generator.py >> /app/logs/calendar_$(date +\%Y\%m\%d_\%H\%M\%S).log 2>&1 
 
 # Cleanup old data at 2 AM
-0 2 * * * root /app/cleanup.sh >> /app/logs/cleanup_$(date +\%Y\%m\%d).log 2>&1
+0 2 * * * /app/cleanup.sh >> /app/logs/cleanup_$(date +\%Y\%m\%d).log 2>&1
 EOF
 
 # Set permissions

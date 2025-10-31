@@ -11,11 +11,15 @@ services:
       - MAX_PAGES_PER_CASINO=None
       - PYTHONUNBUFFERED=1
     
+    env_file:
+      - .env.ren3
+    
     volumes:
       - ./output:/app/output
       - ./logs:/app/logs
       - ./archive:/app/archive
-      - ./casino_scraper.py:/app/casino_scraper.py
+      - ./processed:/app/processed
+      - ./final_output:/app/final_output
     
     logging:
       driver: "json-file"
@@ -30,12 +34,10 @@ services:
     container_name: scraper-dashboard
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - ./output:/usr/share/nginx/html/output:ro
       - ./logs:/usr/share/nginx/html/logs:ro
+      - ./processed:/usr/share/nginx/html/processed:ro
     depends_on:
-
       - casino-scraper
-
-

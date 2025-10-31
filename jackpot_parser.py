@@ -360,7 +360,7 @@ def process_file_and_save_csv(promo_path, user_uuid, workspace_id, output_csv_pa
 
 def get_latest_promo_folder():
     """Get the most recent promo folder"""
-    output_dir = Path('')
+    output_dir = Path('/app/output/')
     
     promo_folders = list(output_dir.glob('promo_*'))
     
@@ -387,7 +387,7 @@ if __name__ == "__main__":
         exit(1)
     
     # Create processed directory for output
-    processed_dir = Path('/app/jackpot') / promo_folder.name
+    processed_dir = Path('/app/output')
     processed_dir.mkdir(parents=True, exist_ok=True)
     
     # Output file in processed directory

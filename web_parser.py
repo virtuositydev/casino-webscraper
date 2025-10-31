@@ -433,11 +433,11 @@ if __name__ == "__main__":
         exit(1)
     
     # Create processed directory for output
-    processed_dir = Path('/app/processed') / promo_folder.name
+    processed_dir = Path('/app/final_output') / promo_folder.name
     processed_dir.mkdir(parents=True, exist_ok=True)
     
     # Output file in processed directory
-    output_csv_file = processed_dir / 'web_promo_agent.csv'
+    output_csv_file = processed_dir / 'web_promo.csv'
 
     # --- Execution ---
     process_file_and_save_csv(

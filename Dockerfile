@@ -29,7 +29,7 @@ COPY .env.ren3 .
 RUN chmod +x entrypoint.sh cleanup.sh run_processor.py ren3_processor.py
 
 # Create directories
-RUN mkdir -p /app/output /app/logs /app/archive /app/processed
+RUN mkdir -p /app/output /app/logs /app/archive /app/processed /app/final_output
 
 # Set timezone
 ENV TZ=Asia/Manila
