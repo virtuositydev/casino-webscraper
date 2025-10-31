@@ -39,5 +39,7 @@ services:
       - ./output:/usr/share/nginx/html/output:ro
       - ./logs:/usr/share/nginx/html/logs:ro
       - ./processed:/usr/share/nginx/html/processed:ro
+      - ./final_output:/usr/share/nginx/html/final_output:ro
+
     depends_on:
       - casino-scraper

@@ -21,12 +21,14 @@ COPY web_parser.py .
 COPY jackpot_parser.py .
 COPY entrypoint.sh .
 COPY cleanup.sh .
+COPY calendar_generator.py .
+COPY email_script.py .
 
 # Copy environment file
 COPY .env.ren3 .
 
 # Make scripts executable
-RUN chmod +x entrypoint.sh cleanup.sh run_processor.py ren3_processor.py
+RUN chmod +x entrypoint.sh cleanup.sh calendar_generator.py email_script.py jackpot_parser.py casino_scraper.py web_parser.py
 
 # Create directories
 RUN mkdir -p /app/output /app/logs /app/archive /app/processed /app/final_output
