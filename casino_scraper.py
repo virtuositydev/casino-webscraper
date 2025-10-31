@@ -1606,7 +1606,7 @@ def save_individual_promos(all_results: List[Dict[str, Any]], base_filename: str
     
     # Create folder name with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"app/output/promo_{timestamp}" 
+    folder_name = f"/app/output/promo_{timestamp}" 
     
     # Create the folder
     os.makedirs(folder_name, exist_ok=True)
