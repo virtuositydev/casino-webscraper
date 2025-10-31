@@ -433,7 +433,7 @@ if __name__ == "__main__":
         exit(1)
     
     # Create processed directory for output
-    processed_dir = Path('/app/final_output') / promo_folder.name
+    processed_dir = Path('/app/final_output')
     processed_dir.mkdir(parents=True, exist_ok=True)
     
     # Output file in processed directory

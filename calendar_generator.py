@@ -4,36 +4,17 @@ from collections import defaultdict
 from pathlib import Path
 import sys
 
-# Find the latest promo folder
-output_dir = Path('/app/processed')
+# Set input file path
+input_file = Path('/app/final_output/web_promo.csv')
 
-promo_folders = list(output_dir.glob('promo_*'))
-
-if not promo_folders:
-    print("ERROR: No promo folders found in /app/processed")
+if not input_file.exists():
+    print(f"ERROR: File not found: {input_file}")
     sys.exit(1)
 
-# Sort by modification time (most recent first)
-promo_folders.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+print(f"Using CSV file: {input_file}")
 
-latest_folder = promo_folders[0]
-print(f"Found latest promo folder: {latest_folder}")
-
-# Find the Excel file in the latest folder
-excel_files = list(latest_folder.glob('final_analysis_*.xlsx'))
-
-if not excel_files:
-    print(f"ERROR: No Excel files found in {latest_folder}")
-    sys.exit(1)
-
-# If multiple files, get the most recent one
-excel_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-input_file = excel_files[0]
-
-print(f"Using Excel file: {input_file}")
-
-# Read the Excel file
-df = pd.read_excel(input_file)
+# Read the CSV file
+df = pd.read_csv(input_file)
 
 # Convert date columns to datetime, handling errors
 df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce')
@@ -87,8 +68,8 @@ for date_str in sorted_dates:
     
     output_lines.append("")  # Empty line between dates
 
-# Write to file (save in the same promo folder)
-output_file = latest_folder / 'calendar.txt'
+# Write to file (save in /app/final_output)
+output_file = Path('/app/final_output/calendar.txt')
 with open(output_file, 'w', encoding='utf-8') as f:
     f.write('\n'.join(output_lines))
 
